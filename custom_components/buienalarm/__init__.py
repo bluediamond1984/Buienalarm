@@ -87,6 +87,34 @@ def _has_duplicate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return dup
 
 
+def _resolve_coordinates(hass: HomeAssistant, entry: ConfigEntry) -> tuple[float, float]:
+    """Resolve the latitude/longitude that should actually be used."""
+    options_lat = entry.options.get(CONF_LATITUDE)
+    options_lon = entry.options.get(CONF_LONGITUDE)
+    if options_lat is not None and options_lon is not None:
+        _LOGGER.debug(
+            "[INIT_SETUP_ENTRY] Coordinates resolved from entry.options: lat=%s, lon=%s",
+            options_lat, options_lon,
+        )
+        return float(options_lat), float(options_lon)
+
+    data_lat = entry.data.get(CONF_LATITUDE)
+    data_lon = entry.data.get(CONF_LONGITUDE)
+    if data_lat is not None and data_lon is not None:
+        _LOGGER.debug(
+            "[INIT_SETUP_ENTRY] Coordinates resolved from entry.data: lat=%s, lon=%s",
+            data_lat, data_lon,
+        )
+        return float(data_lat), float(data_lon)
+
+    _LOGGER.debug(
+        "[INIT_SETUP_ENTRY] No coordinates in options or data; "
+        "falling back to hass.config (zone.home): lat=%s, lon=%s",
+        hass.config.latitude, hass.config.longitude,
+    )
+    return float(hass.config.latitude), float(hass.config.longitude)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Buienalarm integration from a config entry."""
     _LOGGER.debug("[INIT_SETUP_ENTRY] Starting setup for entry_id=%s, title=%s", entry.entry_id, entry.title)
@@ -101,21 +129,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Read coordinates
     try:
-        latitude = entry.data[CONF_LATITUDE]
-        longitude = entry.data[CONF_LONGITUDE]
-        _LOGGER.debug("[INIT_SETUP_ENTRY] Coordinates: latitude=%s, longitude=%s", latitude, longitude)
-    except KeyError as e:
-        _LOGGER.error("[INIT_SETUP_ENTRY] Missing required config: %s", e)
+        latitude, longitude = _resolve_coordinates(hass, entry)
+        _LOGGER.debug("[INIT_SETUP_ENTRY] Coordinates in use: latitude=%s, longitude=%s", latitude, longitude)
+    except (TypeError, ValueError) as e:
+        _LOGGER.error("[INIT_SETUP_ENTRY] Invalid coordinate configuration: %s", e)
         return False
-
-    # refresh_interval = entry.data.get("refresh_interval")
-    # refresh_interval = entry.options.get("refresh_interval")
 
     # Check if the config entry exists and print its options
     if entry.options:
         _LOGGER.debug("[INIT_SETUP_ENTRY] Entry options: %s", entry.options)
     else:
-        _LOGGER.debug("[INIT_SETUP_ENTRY] No entry options set; using defaults")
+        _LOGGER.debug("[INIT_SETUP_ENTRY] No entry options set; using data/hass.config")
 
     # Create HTTP session
     session = async_get_clientsession(hass, verify_ssl=True)
@@ -163,7 +187,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     refresh_interval = int(entry.options.get("refresh_interval", SCAN_INTERVAL.total_seconds()))
     coordinator.refresh_interval = refresh_interval
     _LOGGER.debug("[INIT_SETUP_ENTRY] Coordinator update_interval set to %s seconds", refresh_interval)
-    _LOGGER.debug("[INIT_SETUP_ENTRY] Coordinator attributes: %s", dir(coordinator))
     _LOGGER.debug("[INIT_SETUP_ENTRY] Coordinator attribute refresh_interval: %s", coordinator.refresh_interval)
     _LOGGER.debug("[INIT_SETUP_ENTRY] Coordinator attribute options: %s", coordinator.options)
 

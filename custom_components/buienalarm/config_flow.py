@@ -34,8 +34,6 @@ _LOGGER: Final[logging.Logger] = logging.getLogger(__name__)
 # -----------------------------------------------------------------------------
 # Defaults & helpers
 # -----------------------------------------------------------------------------
-DEFAULT_LATITUDE: Final[float] = 52.7875
-DEFAULT_LONGITUDE: Final[float] = 4.79861
 DEFAULT_REFRESH_INTERVAL: Final[int] = 300  # seconds (5 min)
 DEFAULT_NOTIFICATION_LIMIT: Final[int] = 0   # mm/h – notify on any value
 
@@ -89,7 +87,7 @@ class BuienalarmConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 location_name = user_input.get(CONF_NAME, NAME)  # Default name if not provided
 
                 return self.async_create_entry(
-                    title=f"{location_name} ({latitude_raw}, {longitude_raw})",
+                    title=location_name,
                     data={
                         CONF_NAME: user_input.get(CONF_NAME, NAME),
                         CONF_LATITUDE: float(latitude_raw),
@@ -112,11 +110,14 @@ class BuienalarmConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     # ------------------------------------------------------------------
     def _show_form(self, errors: dict[str, str] | None = None) -> FlowResult:
         """Return the form definition for the *user* step."""
+        default_latitude: float = self.hass.config.latitude or 0.0
+        default_longitude: float = self.hass.config.longitude or 0.0
+
         data_schema: vol.Schema = vol.Schema(
             {
                 vol.Required(CONF_NAME, default=NAME): str,
-                vol.Required(CONF_LATITUDE, default=DEFAULT_LATITUDE): float,
-                vol.Required(CONF_LONGITUDE, default=DEFAULT_LONGITUDE): float,
+                vol.Required(CONF_LATITUDE, default=default_latitude): float,
+                vol.Required(CONF_LONGITUDE, default=default_longitude): float,
                 vol.Optional(
                     "notification_limit", default=DEFAULT_NOTIFICATION_LIMIT
                 ): int,
@@ -174,6 +175,13 @@ class BuienalarmOptionsFlow(config_entries.OptionsFlow):
     def _options_schema(self) -> vol.Schema:  # noqa: D401
         """Return schema for the options form."""
         existing = self._entry.options
+        fallback_latitude: float = self._entry.data.get(
+            CONF_LATITUDE, self.hass.config.latitude or 0.0
+        )
+        fallback_longitude: float = self._entry.data.get(
+            CONF_LONGITUDE, self.hass.config.longitude or 0.0
+        )
+
         return vol.Schema(
             {
                 vol.Required(
@@ -182,11 +190,11 @@ class BuienalarmOptionsFlow(config_entries.OptionsFlow):
                 ): str,
                 vol.Required(
                     CONF_LATITUDE,
-                    default=existing.get(CONF_LATITUDE, DEFAULT_LATITUDE),
+                    default=existing.get(CONF_LATITUDE, fallback_latitude),
                 ): float,
                 vol.Required(
                     CONF_LONGITUDE,
-                    default=existing.get(CONF_LONGITUDE, DEFAULT_LONGITUDE),
+                    default=existing.get(CONF_LONGITUDE, fallback_longitude),
                 ): float,
                 vol.Required(
                     "notification_limit",
