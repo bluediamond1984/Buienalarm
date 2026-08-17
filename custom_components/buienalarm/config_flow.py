@@ -161,6 +161,16 @@ class BuienalarmOptionsFlow(config_entries.OptionsFlow):
     ) -> FlowResult:
         """Manage the Buienalarm options."""
         if user_input is not None:
+            new_name = user_input.get(CONF_NAME)
+            if new_name and new_name != self._entry.title:
+                _LOGGER.debug(
+                    "Renaming entry %s: %r -> %r",
+                    self._entry.entry_id, self._entry.title, new_name,
+                )
+                self.hass.config_entries.async_update_entry(
+                    self._entry, title=new_name
+                )
+
             _LOGGER.debug(
                 "Updating options for entry %s: %s", self._entry.entry_id, user_input
             )
