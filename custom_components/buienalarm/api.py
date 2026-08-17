@@ -229,8 +229,20 @@ class BuienalarmApiClient:
                     
                     await self._maybe_dismiss_notification()
                     
+                    if not isinstance(data, dict):
+                        _LOGGER.error(
+                            "[API%s]   Unexpected top-level JSON type: %s - "
+                            "expected a dict with keys like 'data'/'daypart'/"
+                            "'nowcastmessage'/'summary'",
+                            self._sfx,
+                            type(data).__name__,
+                        )
+                        raise ApiError(
+                            f"Unexpected response shape: {type(data).__name__}"
+                        )
+
                     return {
-                        "timeseries": data,
+                        **data,
                         "retrieval_time": fetch_started_at,
                         "cache_age": age_header,
                     }

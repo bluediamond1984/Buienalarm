@@ -138,14 +138,8 @@ async def async_setup_entry(
     # async_add_entities(sensors5, update_before_add=True)  # sensors van SENSOR_DESCRIPTIONS met BuienalarmTestSensor
     _LOGGER.debug("[SENSOR SETUP] %d sensors added", len(sensors1))
 
-    config_entry.async_on_unload(config_entry.add_update_listener(async_reload_entry))
 
     return True
-
-
-async def async_reload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
-    """Reload config entry when options are changed."""
-    await hass.config_entries.async_reload(config_entry.entry_id)
 
 
 # class BuienalarmTestSensor(CoordinatorEntity[BuienalarmDataUpdateCoordinator], SensorEntity):
